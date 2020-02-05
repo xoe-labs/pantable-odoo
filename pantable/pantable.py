@@ -7,9 +7,13 @@ import fractions
 import io
 
 import panflute
+import odoolib
 
 
 class EmptyTableError(Exception):
+    pass
+
+class MoreThanHeaderContentError(Exception):
     pass
 
 
@@ -137,21 +141,48 @@ def parse_alignment(alignment_string, n_col):
     return alignment
 
 
-def read_data(include, data, encoding=None, csv_kwargs={}):
-    """Parse CSV table.
+def read_data(url, port, database, login, password, model, fields, domain, firstrow=None):
+    """Read an odoo model.
 
-    `include`: path to CSV file or None. This is prioritized first.
+    `url`: URL of the odoo instance.
 
-    `data`: str of CSV table.
+    `database`: name of the database.
 
-    Return None when the include path is invalid.
+    `model`: name of the odoo model in dot-notaion (ej `res.partner`).
+
+    `fields`: list of field names.
+
+    `domain`: list of tuples with odoo domain expression.
+
+    `firstrow`: string overriding odoo's header row.
+
+    Returns list (rows) of lists (columns) of the fetched data.
     """
-    with (io.StringIO(data) if include is None else io.open(str(include), encoding=encoding)) as f:
-        table_list = list(csv.reader(f, **csv_kwargs))
+    connection = odoolib.get_connection(
+        hostname=url,
+        port=port,
+        database=database,
+        login=login,
+        password=password,
+    )
+    connection.get_user_context()
+    model = connection.get_model(model)
+    ids = model.search(domain)
+    table_list = model.export_data(
+        ids,
+        fields,
+        context=dict(connection.user_context or {}, import_compat=False)
+    )["datas"]
 
-    if not table_list:
+    if not table_list[0]:
         raise EmptyTableError
 
+    if firstrow:
+        with io.StringIO(firstrow) as f:
+            rows = [row for row in csv.reader(f)]
+            if not len(rows) == 1:
+                raise MoreThanHeaderContentError
+            table_list.insert(0, rows[0])
     return table_list
 
 
@@ -284,15 +315,20 @@ def csv_to_pipe_tables(table_list, caption, alignment):
     return '\n'.join(pipe_table_list)
 
 
-def csv2table_markdown(options, data, use_grid_tables):
+def odoo2table_markdown(options, data, use_grid_tables):
     """Construct pipe/grid table directly.
     """
     # prepare table in list from data/include
     table_list = read_data(
-        options.get('include', None),
-        data,
-        encoding=options.get('include-encoding', None),
-        csv_kwargs=options.get('csv-kwargs', dict()),
+        options.get('url'),
+        options.get('port', 80),
+        options.get('database', options.get('url')),
+        options.get('login'),
+        options.get('password'),
+        options.get('model'),
+        options.get('fields'),
+        options.get('domain', []),
+        firstrow=data,
     )
 
     # regularize table: all rows should have same length
@@ -322,15 +358,20 @@ def csv2table_markdown(options, data, use_grid_tables):
         return panflute.convert_text(text)
 
 
-def csv2table_ast(options, data):
+def odoo2table_ast(options, data):
     """provided to panflute.yaml_filter to parse its content as pandoc table.
     """
     # prepare table in list from data/include
     table_list = read_data(
-        options.get('include', None),
-        data,
-        encoding=options.get('include-encoding', None),
-        csv_kwargs=options.get('csv-kwargs', dict()),
+        options.get('url'),
+        options.get('port', 80),
+        options.get('database', options.get('url')),
+        options.get('login'),
+        options.get('password'),
+        options.get('model'),
+        options.get('fields'),
+        options.get('domain', []),
+        firstrow=data,
     )
 
     # regularize table: all rows should have same length
@@ -372,9 +413,9 @@ def convert2table(options, data, **args):
     try:
         if use_pipe_tables or use_grid_tables:
             # if both are specified, use grid_tables
-            return csv2table_markdown(options, data, use_grid_tables)
+            return odoo2table_markdown(options, data, use_grid_tables)
         else:
-            return csv2table_ast(options, data)
+            return odoo2table_ast(options, data)
 
     # delete element if table is empty (by returning [])
     # element unchanged if include is invalid (by returning None)
@@ -396,7 +437,7 @@ def main(doc=None):
     """
     return panflute.run_filter(
         panflute.yaml_filter,
-        tag='table',
+        tag='odootable',
         function=convert2table,
         strict_yaml=True,
         doc=doc

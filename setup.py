@@ -32,7 +32,7 @@ with open("pantable/version.py") as f:
 version = version['__version__']
 
 setup(
-    name='pantable',
+    name='pantable-odoo',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
@@ -84,7 +84,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='pandoc pandocfilters panflute markdown latex html csv',
+    keywords='pandoc pandocfilters panflute markdown latex html csv odoo',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
@@ -98,7 +98,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['panflute>=1.8.2'],
+    install_requires=['panflute>=1.8.2', 'odoo-client-lib>=1.2.2'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
@@ -127,7 +127,7 @@ setup(
     # pip to create the appropriate form of executable for the target platform.
     entry_points={
         'console_scripts': [
-            'pantable = pantable.pantable:main',
+            'pantable-odoo = pantable.pantable:main',
             'pantable2csv = pantable.pantable2csv:main'
         ],
     },
