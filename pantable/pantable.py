@@ -174,7 +174,7 @@ def read_data(url, port, database, login, password, model, fields, domain, first
         context=dict(connection.user_context or {}, import_compat=False)
     )["datas"]
 
-    if not table_list[0]:
+    if not table_list:
         raise EmptyTableError
 
     if firstrow:
