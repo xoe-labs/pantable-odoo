@@ -406,9 +406,52 @@ def odoo2table_ast(options, data):
     )
 
 
-def convert2table(options, data, **args):
-    use_pipe_tables = options.get('pipe_tables', False)
-    use_grid_tables = options.get('grid_tables', False)
+def convert2table(options, data, element, doc):
+
+    global_options = doc.get_metadata('odootable', {})
+
+    if 'url' not in options:
+        assert global_options.get("url"), "URL must be set either globally or locally"
+        options["url"] = global_options.get("url")
+        if 'database' not in options:
+            options["database"] = (
+                global_options.get("database") or global_options.get("url")
+            )
+
+    if 'database' not in options:
+        options["database"] = options.get('url')
+
+    if 'port' not in options:
+        options["port"] = global_options.get("port", 80)
+
+    if 'login' not in options:
+        assert global_options.get("login"), "login must be set either globally or locally"
+        options["login"] = global_options.get("login")
+
+    if 'password' not in options:
+        assert global_options.get("password"), "password must be set either globally or locally"
+        options["password"] = global_options.get("password")
+
+    if 'model' not in options:
+        assert global_options.get("model"), "model must be set either globally or locally"
+        options["model"] = global_options.get("model")
+
+    if 'fields' not in options:
+        assert global_options.get("fields"), "model must be set either globally or locally"
+        options["fields"] = global_options.get("fields")
+
+    if 'domain' in global_options:
+        options["domain"] = ['&'] + options["domain"] + global_options.get("domain")
+
+    if 'pipe_tables' not in options:
+        use_pipe_tables = global_options.get('pipe_tables', False)
+    else:
+        use_pipe_tables = options.get('pipe_tables', False)
+
+    if 'grid_tables' not in options:
+        use_grid_tables = global_options.get('grid_tables', False)
+    else:
+        use_grid_tables = options.get('grid_tables', False)
 
     try:
         if use_pipe_tables or use_grid_tables:
