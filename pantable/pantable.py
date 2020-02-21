@@ -441,7 +441,23 @@ def convert2table(options, data, element, doc):
         options["fields"] = global_options.get("fields")
 
     if 'domain' in global_options:
-        options["domain"] = ['&'] + options["domain"] + global_options.get("domain")
+        # Check sporadically: https://github.com/sergiocorreia/panflute/issues/132
+        global_domain = global_options.get("domain")
+        global_domain_coerced = []
+        for sub in global_domain:
+            sub_coerced = []
+            for leaf in sub:
+                try:
+                    sub_coerced.append(int(leaf))
+                except:
+                    try:
+                        sub_coerced.append(float(leaf))
+                    except:
+                        sub_coerced.append(leaf)
+            global_domain_coerced.append(sub_coerced)
+
+        options["domain"] = options["domain"] + global_domain_coerced
+        panflute.debug("pantable: combined domain '{}'.".format(options["domain"]))
 
     if 'pipe_tables' not in options:
         use_pipe_tables = global_options.get('pipe_tables', False)
