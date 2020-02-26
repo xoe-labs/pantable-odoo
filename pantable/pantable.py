@@ -211,6 +211,11 @@ def parse_table_list(markdown, table_list):
         return panflute.TableCell(*panflute.convert_text(string))
 
     def plain_to_table_cell(string):
+        if isinstance(string, bool):
+            if not string:
+                string = "no"
+            else:
+                string = "yes"
         return panflute.TableCell(panflute.Plain(panflute.Str(string)))
 
     to_table_cell = markdown_to_table_cell if markdown else plain_to_table_cell
